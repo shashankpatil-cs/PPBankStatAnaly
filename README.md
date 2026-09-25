@@ -32,7 +32,7 @@ A full-stack, production-grade application to upload PhonePe transaction stateme
 ## Project Layout
 
 ```
-phonepe-analyzer/
+.
 ├── backend/
 │   ├── app/
 │   │   ├── main.py              # FastAPI app, CORS, lifespan hook, routers
@@ -76,7 +76,13 @@ phonepe-analyzer/
 
 ## Prerequisites
 
-Before starting, ensure you have the following installed on your machine:
+First, clone the repository:
+```bash
+git clone https://github.com/shashankpatil-cs/PPBankStatAnaly.git
+cd PPBankStatAnaly
+```
+
+Ensure you have the following installed on your machine:
 
 | Requirement | Docker Compose Method | Manual Local Dev Method | Notes |
 | :--- | :--- | :--- | :--- |
@@ -373,9 +379,9 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## How PDF Extraction Works
 
-PhonePe and bank statement PDFs are parsed using a dual-engine architecture combining **Approach 2 (Coordinate-Based Word Clustering & Transaction Block Grouping)** and **OpenAI AI Precision Extraction** with a local deterministic regex fallback:
+PhonePe and bank statement PDFs are parsed using a dual-engine architecture combining **Coordinate-Based Word Clustering & Transaction Block Grouping** and **OpenAI AI Precision Extraction** with a local deterministic regex fallback:
 
-1. **Approach 2 Coordinate-Based Clustering (`pdfplumber`):**
+1. **Coordinate-Based Clustering (`pdfplumber`):**
    - Extracts word bounding boxes (`x0, top`) instead of naive `.extract_text()` newline splits.
    - Clusters words into horizontal rows by vertical proximity (`y_tolerance`).
    - Dynamically identifies column boundaries (`Date`, `Details`, `Type`, `Amount`) across any page width.
