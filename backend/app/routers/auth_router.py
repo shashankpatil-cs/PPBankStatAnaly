@@ -1,14 +1,18 @@
 import uuid
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import Depends
+from jose import JWTError, jwt
 
-from app.auth import hash_password, verify_password, create_access_token, create_refresh_token, store_refresh_token, verify_refresh_token_in_redis, revoke_refresh_token
+from app.auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+)
+from app.config import settings
 from app.database import users_collection
 from app.schemas import UserCreate, Token, RefreshRequest
-from jose import JWTError, jwt
-from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -30,7 +34,6 @@ async def signup(payload: UserCreate):
     )
     access_token = create_access_token({"sub": user_id})
     refresh_token = create_refresh_token({"sub": user_id})
-    await store_refresh_token(user_id, refresh_token)
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 
@@ -41,8 +44,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     access_token = create_access_token({"sub": user["_id"]})
     refresh_token = create_refresh_token({"sub": user["_id"]})
-    await store_refresh_token(user["_id"], refresh_token)
     return Token(access_token=access_token, refresh_token=refresh_token)
+
 
 @router.post("/refresh", response_model=Token)
 async def refresh(payload: RefreshRequest):
@@ -50,19 +53,16 @@ async def refresh(payload: RefreshRequest):
     try:
         jwt_payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         user_id = jwt_payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
+        token_type = jwt_payload.get("type")
+        if not user_id or token_type != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    stored_user_id = await verify_refresh_token_in_redis(token)
-    if not stored_user_id or stored_user_id != user_id:
-        raise HTTPException(status_code=401, detail="Refresh token expired or revoked")
-    
-    await revoke_refresh_token(token)
-    
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user = await users_collection.find_one({"_id": user_id})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
     new_access = create_access_token({"sub": user_id})
     new_refresh = create_refresh_token({"sub": user_id})
-    await store_refresh_token(user_id, new_refresh)
-    
     return Token(access_token=new_access, refresh_token=new_refresh)

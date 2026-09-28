@@ -22,10 +22,6 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
     jwt_refresh_expire_minutes: int = 60 * 24 * 30  # 30 days
-
-    # Redis
-    redis_uri: str = "redis://localhost:6379"
-
     # AWS S3
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
