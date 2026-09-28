@@ -21,5 +21,5 @@ openai==1.87.0
 
 passlib==1.7.4
 bcrypt==4.3.0
-
+python-jose[cryptography]==3.3.0
 email-validator>=2.2.0
