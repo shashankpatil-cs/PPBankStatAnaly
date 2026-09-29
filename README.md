@@ -1,463 +1,549 @@
-# PhonePe Bank Statement Analyzer
+<div align="center">
 
-A full-stack, production-grade application to upload PhonePe transaction statement PDFs, automatically extract transactions, securely store them per-user in MongoDB, visualize financial metrics with interactive charts, and query your personal spending history via an AI Assistant powered by function-calling tools.
+# SpendWise — PhonePe & Bank Statement Financial Intelligence Platform
 
-**Tech Stack:**
-- **Frontend:** React 18 (Vite), Recharts, Axios, React Router 6
-- **Backend:** FastAPI, Motor (Async MongoDB driver), Pandas, PyPDF2, pdfplumber
-- **Database:** MongoDB 7.0
-- **AI Assistant:** OpenAI Agents SDK (function calling with automated MongoDB querying)
-- **Object Storage (Optional):** AWS S3 (for remote PDF statement archiving & presigned downloads)
-- **Containerization:** Docker & Docker Compose
+<p align="center">
+  <strong>An end-to-end, full-stack financial intelligence platform that parses password-protected PhonePe statement PDFs, extracts transactions via coordinate-based & AI clustering, provides real-time interactive analytics, and features an autonomous AI Financial Copilot.</strong>
+</p>
 
----
-
-## Table of Contents
-
-1. [Project Layout](#project-layout)
-2. [Prerequisites](#prerequisites)
-3. [Step 1: Setting Up the Database (MongoDB)](#step-1-setting-up-the-database-mongodb)
-4. [Step 2: Initializing Environment Variables](#step-2-initializing-environment-variables)
-5. [Step 3: Starting the Application](#step-3-starting-the-application)
-   - [Method A: Docker Compose (Fastest & Recommended)](#method-a-docker-compose-fastest--recommended)
-   - [Method B: Local Development (Manual Setup)](#method-b-local-development-manual-setup)
-6. [Step 4: End-to-End Verification & First Use](#step-4-end-to-end-verification--first-use)
-7. [How PDF Extraction Works](#how-pdf-extraction-works)
-8. [AWS & Production Deployment](#aws--production-deployment)
-9. [Security Architecture](#security-architecture)
-10. [Troubleshooting & FAQs](#troubleshooting--faqs)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18.3+-61DAFB.svg?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5.4+-646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7.0+-47A248.svg?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-Agents%20SDK-412991.svg?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/)
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11+-3776AB.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose%20Ready-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![AWS S3](https://img.shields.io/badge/AWS-S3%20Archival-569A31.svg?style=for-the-badge&logo=amazons3&logoColor=white)](https://aws.amazon.com/s3/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 ---
 
-## Project Layout
+[Key Features](#key-features) • [System Architecture](#system-architecture) • [Tech Stack](#tech-stack) • [Quickstart (Docker)](#quickstart-docker-compose) • [Manual Setup](#local-development-setup) • [API Reference](#api-documentation) • [PDF Parser Engine](#deep-dive-pdf-extraction-engine) • [Author](#author)
+
+---
+
+</div>
+
+## Overview
+
+**SpendWise** (PhonePe Bank Statement Analyzer) solves the messy reality of personal finance tracking in India's UPI ecosystem. PhonePe statement PDFs often come password-protected, contain complex multi-line cell layouts, and suffer from digital extraction bugs (e.g. line-breaks splitting numbers like `INR\n17000.00`). 
+
+SpendWise provides:
+1. **Intelligent PDF Ingestion**: A dual-engine parser that combines coordinate-based bounding box clustering with OpenAI GPT-4o-mini structured extraction (backed by a deterministic local regex fallback).
+2. **Interactive Financial Analytics**: High-performance metric computation via Pandas and dynamic Recharts data visualizations.
+3. **Multi-Statement Intelligence**: Individual statement management, custom renaming, and unified multi-statement aggregation.
+4. **Autonomous AI Financial Copilot**: Built with the OpenAI Agents SDK, utilizing sandboxed function-calling tools that query your scoped MongoDB records directly.
+5. **Production-Ready Multi-Tenancy**: End-to-end user isolation with JWT authentication, S3 cloud document archiving, and complete one-click account data erasure.
+
+---
+
+## Key Features
+
+### 📄 Dual-Engine PDF Ingestion & Extraction
+- **Password Support:** Handles encrypted/password-protected PhonePe statement PDFs seamlessly.
+- **Coordinate-Based Word Clustering:** Employs `pdfplumber` bounding box clustering (`x0`, `top`, `y_tolerance`) to reconstruct tabular rows accurately across arbitrary page widths.
+- **AI Structured Extraction:** Formats clustered blocks into structured JSON via OpenAI (`gpt-4o-mini`), validated with Pydantic schemas.
+- **Deterministic Regex Fallback:** Fully functional offline mode using local pattern recognition if OpenAI is disabled or unavailable.
+- **Deduplication Engine:** Compound indexing ensures duplicate statements or re-uploaded transactions are never duplicated in the database.
+
+### 📊 Financial Analytics & Insights
+- **Core Financial Metrics:** Real-time calculation of Total Debits (Expenses), Total Credits (Income), Net Cash Flow, Average Daily Spend (calendar-basis), and Average Monthly Spend.
+- **Interactive Visualizations:**
+  - **Spending Trend:** Granular daily or monthly area charts.
+  - **Category Breakdown:** Interactive donut charts highlighting expense distribution.
+  - **Top Counterparties:** Bar chart ranking highest-spend recipients and merchants.
+- **Flexible Date & Statement Scoping:** Analyze metrics across all combined statements or isolate a single uploaded statement.
+
+### 📁 Multi-Statement Management
+- Upload and maintain multiple monthly or yearly statements simultaneously.
+- **Interactive Statement Switcher:** View individual statement performance or toggle to "All Statements (Combined)".
+- **In-Place Renaming:** Customize statement labels directly in the UI (e.g., *"October 2024 Expenses"*).
+- **S3 Document Archival:** Uploaded statements are securely saved to Amazon S3 for long-term document retrieval.
+
+### 🤖 AI Financial Copilot (OpenAI Agents SDK)
+- Conversational financial assistant grounded in your real transaction records.
+- **Sandboxed Function Calling Tools:**
+  - `get_financial_summary`: Queries net cash flow, income, expense, and daily/monthly averages.
+  - `get_top_recipients`: Identifies top payment recipients by debit volume.
+  - `get_spending_trend`: Analyzes spending patterns across dates.
+  - `search_transactions`: Finds specific payments by merchant, amount range, or category.
+- **Zero Prompt Injection Risk:** Functions are programmatically closed over the authenticated user's ID server-side. The model cannot access another user's records.
+
+### 🏷️ Smart Categorization & Bulk Updates
+- **Automatic Heuristic Classification:** Instant mapping of counterparties to categories (Food, Groceries, Recharge & Bills, Shopping, Travel, Health, Entertainment, Investment).
+- **Batch Editing (`update_all_matching`):** Updating a counterparty's category automatically propagates to all past transactions with that same recipient.
+
+### 🔒 Enterprise Security & Privacy
+- **Stateless JWT Auth:** Secure access and refresh token lifecycle.
+- **Password Hashing:** Passwords encrypted using `passlib` with `bcrypt`.
+- **Tenant Isolation:** Every database operation strictly enforces `{"user_id": current_user["_id"]}`.
+- **GDPR-Style Account Deletion:** One-click account purge completely deletes the user profile, all MongoDB transaction records, and associated files in Amazon S3.
+- **Data Export:** Filtered transaction history exportable to CSV on demand with automatic S3 archival.
+
+---
+
+## System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client ["Frontend (React 18 + Vite)"]
+        UI[Responsive Modern UI / Vanilla CSS]
+        AuthUI[Login & Registration]
+        DashUI[Dashboard & Recharts]
+        TxnUI[Filterable Transaction Table]
+        StmtUI[Statement Selector & Uploader]
+        AgentUI[AI Copilot Chat Interface]
+    end
+
+    subgraph Gateway ["Nginx / Reverse Proxy"]
+        Proxy[Port 3000 / Nginx]
+    end
+
+    subgraph BackendApp ["Backend API (FastAPI)"]
+        API[FastAPI Gateway :8000]
+        AuthModule[JWT Auth & Bcrypt]
+        AnalyticsEngine[Pandas Analytics Engine]
+        UploadRouter[Statement Upload & Management]
+        AIAgentEngine[OpenAI Agents SDK Runner]
+    end
+
+    subgraph ParserEngine ["Dual-Engine PDF Parser"]
+        Plumber[pdfplumber Coordinate Clustering]
+        OpenAIParser[OpenAI GPT-4o-mini Structured JSON]
+        RegexParser[Deterministic Regex Fallback]
+        PydanticVal[Pydantic Schema Validation]
+    end
+
+    subgraph Storage ["Data & Storage Layer"]
+        Mongo[(MongoDB 7.0<br/>Users • Statements • Transactions)]
+        S3[(AWS S3 Storage<br/>Encrypted PDF & CSV Archive)]
+    end
+
+    %% Flow connections
+    Client -->|HTTP / Axios| Proxy
+    Proxy -->|Proxy /api| API
+    API --> AuthModule
+    API --> UploadRouter
+    API --> AnalyticsEngine
+    API --> AIAgentEngine
+
+    UploadRouter --> Plumber
+    Plumber --> OpenAIParser
+    Plumber --> RegexParser
+    OpenAIParser --> PydanticVal
+    RegexParser --> PydanticVal
+    PydanticVal --> Mongo
+    UploadRouter --> S3
+
+    AnalyticsEngine --> Mongo
+    AIAgentEngine -->|Sandboxed Function Tools| Mongo
+    AIAgentEngine <-->|LLM Reasoning & Function Calling| OpenAIAPI[OpenAI API]
+```
+
+---
+
+## Tech Stack
+
+| Domain | Technology | Description |
+| :--- | :--- | :--- |
+| **Frontend** | [React 18](https://react.dev/) | Component-driven UI library |
+| | [Vite 5](https://vitejs.dev/) | Next-generation frontend build tooling |
+| | [Recharts 2](https://recharts.org/) | Composable data visualization charts |
+| | [Axios](https://axios-http.com/) | Promise-based HTTP client with interceptors |
+| | [React Router 6](https://reactrouter.com/) | Client-side routing and protected routes |
+| | [Vanilla CSS](https://developer.mozilla.org/en-US/docs/Web/CSS) | Clean, modular CSS tokens with dark aesthetic |
+| **Backend** | [FastAPI](https://fastapi.tiangolo.com/) | High-performance asynchronous Python web framework |
+| | [Motor](https://motor.readthedocs.io/) | Asynchronous Python driver for MongoDB |
+| | [Pandas](https://pandas.pydata.org/) | Data manipulation and statistical calculations |
+| | [Pydantic 2](https://docs.pydantic.dev/) | Strict data validation and schema enforcement |
+| | [Passlib & Bcrypt](https://passlib.readthedocs.io/) | Secure password hashing algorithms |
+| | [Python-Jose](https://python-jose.readthedocs.io/) | JSON Web Token (JWT) encode/decode |
+| **Extraction** | [pdfplumber](https://github.com/jsvine/pdfplumber) | Coordinate-level word extraction & layout grouping |
+| | [PyPDF2](https://pypdf2.readthedocs.io/) | PDF decryption & metadata handling |
+| **AI Copilot** | [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) | Multi-turn agent with function tools |
+| | [GPT-4o-mini](https://platform.openai.com/) | Cost-efficient, high-speed structured extraction |
+| **Cloud & DevOps**| [MongoDB 7.0](https://www.mongodb.com/) | NoSQL document database with compound indexing |
+| | [AWS S3 / Boto3](https://aws.amazon.com/s3/) | Secure remote object storage for statements & CSVs |
+| | [Docker & Compose](https://www.docker.com/) | Multi-container application orchestration |
+| | [Nginx](https://www.nginx.com/) | Static asset delivery and reverse proxy |
+
+---
+
+## Repository Structure
 
 ```
-.
+SpendWise/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI app, CORS, lifespan hook, routers
-│   │   ├── config.py            # Pydantic Settings loaded from .env
+│   │   ├── main.py              # FastAPI app lifecycle, CORS, route registry
+│   │   ├── config.py            # Pydantic BaseSettings environment config
 │   │   ├── database.py          # Motor async client & index initialization
-│   │   ├── auth.py              # JWT authentication & password hashing
-│   │   ├── schemas.py           # Pydantic request/response models
+│   │   ├── auth.py              # Password hashing, JWT token issue/decode
+│   │   ├── schemas.py           # Pydantic request, response & validation models
 │   │   ├── routers/
-│   │   │   ├── auth_router.py   # /auth/signup, /auth/login
-│   │   │   ├── upload.py        # /statements/upload (PDF -> parser -> Mongo + S3)
-│   │   │   ├── transactions.py  # /transactions (CRUD, filters, CSV export)
+│   │   │   ├── auth_router.py   # /auth/signup, /auth/login, /auth/refresh, /auth/me
+│   │   │   ├── upload.py        # /statements/upload, /statements, /statements/{id}
+│   │   │   ├── transactions.py  # /transactions (CRUD, batch category, CSV export)
 │   │   │   ├── dashboard.py     # /dashboard/summary, /top-recipients, /trend, /categories
-│   │   │   └── assistant.py     # /assistant/chat (AI financial assistant)
+│   │   │   └── assistant.py     # /assistant/chat (AI copilot conversational endpoint)
 │   │   └── services/
-│   │       ├── pdf_parser.py    # pdfplumber-based PhonePe statement parsing
-│   │       ├── analytics.py     # Pandas-based financial metric calculations
-│   │       ├── s3_service.py    # AWS S3 upload & presigned URLs
-│   │       └── ai_agent.py      # OpenAI Agents SDK with function tools
+│   │       ├── pdf_parser.py    # Coordinate clustering + OpenAI + regex fallback parser
+│   │       ├── analytics.py     # Pandas financial metric & trend calculations
+│   │       ├── s3_service.py    # AWS S3 file upload, presigned URLs & user folder purge
+│   │       ├── ai_agent.py      # OpenAI Agents SDK with closed function tools
+│   │       └── diagnose_parser.py # Diagnostic utilities for parser inspection
 │   ├── .env.example             # Backend environment template
-│   ├── Dockerfile               # Backend production container definition
-│   └── requirements.txt         # Python dependencies
+│   ├── Dockerfile               # Multi-stage Python 3.10 production image
+│   └── requirements.txt         # Pinned Python package dependencies
 ├── frontend/
 │   ├── src/
-│   │   ├── api.js               # Axios instance, auth interceptors & endpoints
-│   │   ├── App.jsx              # Main routing, layout, and sidebar navigation
+│   │   ├── api.js               # Axios instance, auto-refresh token interceptors & API client
+│   │   ├── context.js           # ActiveStatement React context provider
+│   │   ├── index.css            # Dark-mode design system & component styles
+│   │   ├── main.jsx             # React DOM entrypoint
+│   │   ├── App.jsx              # Main shell layout, sidebar navigation, statement selector
 │   │   └── components/
-│   │       ├── Login.jsx        # Auth form (login / register)
-│   │       ├── UploadPDF.jsx    # Drag-and-drop PDF upload with password support
-│   │       ├── Dashboard.jsx    # Analytics cards & Recharts graphs
-│   │       ├── TransactionTable.jsx # Paginated, filterable transaction table
-│   │       └── AIAssistant.jsx  # Conversational chat interface
+│   │       ├── Login.jsx        # Authentication (Sign in & Sign up)
+│   │       ├── UploadPDF.jsx    # Drag-and-drop PDF uploader with password input
+│   │       ├── Dashboard.jsx    # Analytics cards, Recharts trends & category donut
+│   │       ├── TransactionTable.jsx # Paginated table, search, category editor & CSV export
+│   │       └── AIAssistant.jsx  # Real-time conversational AI copilot chat
 │   ├── .env.example             # Frontend environment template
-│   ├── Dockerfile               # Multi-stage Vite build + Nginx container
+│   ├── Dockerfile               # Production multi-stage build + Nginx container
 │   ├── nginx.conf               # Nginx reverse proxy configuration
-│   └── package.json             # Frontend dependencies
-├── docker-compose.yml           # Multi-container orchestration (Mongo + Backend + Frontend)
-└── README.md
+│   ├── vite.config.js           # Vite dev server configuration & /api proxy
+│   └── package.json             # Frontend dependencies and scripts
+├── docker-compose.yml           # Unified orchestration (Mongo 7 + Backend + Frontend)
+├── .gitignore                   # Ignore rules for environments, virtualenvs, build artifacts
+└── README.md                    # Project documentation
 ```
 
 ---
 
-## Prerequisites
+## Quickstart (Docker Compose)
 
-First, clone the repository:
+The fastest, zero-config way to launch the full SpendWise stack is via Docker Compose.
+
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/shashankpatil-cs/PPBankStatAnaly.git
 cd PPBankStatAnaly
 ```
 
-Ensure you have the following installed on your machine:
+### 2. Configure Environment Files
+Copy the example templates for both backend and frontend:
 
-| Requirement | Docker Compose Method | Manual Local Dev Method | Notes |
-| :--- | :--- | :--- | :--- |
-| **Docker & Docker Compose** | Required (Docker Desktop v20+) | Not required | Easiest zero-config option |
-| **Python** | Not required | Python 3.10 or 3.11+ | Make sure `python` and `pip` are in PATH |
-| **Node.js** | Not required | Node.js v18.0+ & npm v9+ | Run `node -v` to check |
-| **MongoDB** | Provided by container | MongoDB 6.0+ or Docker | Or a free MongoDB Atlas URI |
-
----
-
-## Step 1: Setting Up the Database (MongoDB)
-
-### How Database Initialization Works
-You **do not** need to run any manual database migration scripts, create tables, or manually configure collections.
-- When the FastAPI backend starts, its `lifespan` handler calls `init_indexes()` in `app/database.py`.
-- This automatically creates the database (default: `phonepe_analyzer`) and collections (`users`, `statements`, `transactions`) along with all required performance and uniqueness indexes:
-  - `transactions`: Compound index on `(user_id, date DESC)`, index on `(user_id, statement_id)`, and a unique sparse index on `(user_id, txn_id)`.
-  - `statements`: Index on `(user_id, uploaded_at DESC)`.
-  - `users`: Unique index on `email`.
-
-### Choose Your MongoDB Setup Option:
-
-#### Option A: Quick Docker MongoDB Container (Recommended for Local Dev)
-If you prefer running the backend and frontend locally on your host machine while keeping MongoDB isolated, start a standalone Mongo container:
-
-```bash
-docker run -d \
-  --name phonepe-mongo \
-  -p 27017:27017 \
-  -v mongo_data:/data/db \
-  mongo:7
-```
-*Your MongoDB instance is now accessible at `mongodb://localhost:27017`.*
-
-#### Option B: Automated via Docker Compose
-If you choose to run the entire app with `docker compose up`, MongoDB 7 is automatically provisioned, network-bridged, and persisted to a named Docker volume (`mongo_data`). No manual steps are required.
-
-#### Option C: Native Local MongoDB Service
-If you have MongoDB Community Server installed directly on your machine:
-- **Windows:** Ensure the "MongoDB Server" service is running in Windows Services (`services.msc`) or run `net start MongoDB`.
-- **macOS (Homebrew):** `brew services start mongodb-community@7.0`
-- **Linux (Ubuntu/Debian):** `sudo systemctl start mongod`
-
-#### Option D: Cloud MongoDB Atlas
-1. Create a free cluster on [MongoDB Atlas](https://www.mongodb.com/atlas).
-2. Create a database user and whitelist your IP address (`0.0.0.0/0` for testing).
-3. Copy your connection string (e.g. `mongodb+srv://<username>:<password>@cluster0.mongodb.net/?retryWrites=true&w=majority`).
-4. Set `MONGO_URI` in `backend/.env` to this connection string.
-
----
-
-## Step 2: Initializing Environment Variables
-
-Both the backend and frontend rely on `.env` files for configuration. Example templates are provided in each directory.
-
-### 1. Initialize Backend Environment File
-
-Navigate to the project root and copy `backend/.env.example` to `backend/.env`:
-
-**On Linux / macOS (Bash / Zsh):**
+**Linux / macOS (Bash):**
 ```bash
 cp backend/.env.example backend/.env
-```
-
-**On Windows (PowerShell):**
-```powershell
-Copy-Item backend\.env.example backend\.env
-```
-
-**On Windows (CMD):**
-```cmd
-copy backend\.env.example backend\.env
-```
-
-#### Backend Environment Variables Reference (`backend/.env`):
-
-| Variable | Default Value | Required? | Description & Recommended Settings |
-| :--- | :--- | :--- | :--- |
-| `MONGO_URI` | `mongodb://localhost:27017` | **Yes** | Connection string. Use `mongodb://localhost:27017` for local host development, `mongodb://mongo:27017` for Docker Compose, or your MongoDB Atlas URI. |
-| `MONGO_DB_NAME` | `phonepe_analyzer` | **Yes** | Target database name in MongoDB. |
-| `JWT_SECRET` | `change-me-in-production` | **Yes** | Secret key for signing authentication tokens. **Must change for production!** *(See generation command below)*. |
-| `JWT_ALGORITHM` | `HS256` | **Yes** | JWT signing algorithm. |
-| `JWT_EXPIRE_MINUTES` | `10080` | **Yes** | Session token expiration time in minutes (default is 7 days). |
-| `OPENAI_API_KEY` | *(empty)* | Optional | OpenAI API Key (`sk-...`). Required if you want to use the AI Assistant chat. Everything else works without it. |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Optional | OpenAI model ID used for function calling (e.g. `gpt-4o-mini`, `gpt-4o`). |
-| `AWS_ACCESS_KEY_ID` | *(empty)* | Optional | AWS IAM Access Key for S3 storage. If blank, PDFs and CSVs are stored locally and in Mongo without S3. |
-| `AWS_SECRET_ACCESS_KEY`| *(empty)* | Optional | AWS IAM Secret Access Key. |
-| `AWS_REGION` | `ap-south-1` | Optional | AWS Region of your S3 bucket. |
-| `S3_BUCKET_NAME` | `phonepe-analyzer-bucket`| Optional | Name of your S3 bucket. |
-| `CORS_ORIGINS` | `http://localhost:3000,http://localhost:5173` | **Yes** | Comma-separated list of allowed frontend origins for CORS headers. |
-| `UPLOAD_DIR` | `/tmp/phonepe_uploads` | **Yes** | Temporary directory where uploaded PDFs are buffered during parsing. *(On Windows local dev, you can use `./uploads`)*. |
-
-> [!TIP]
-> **Generate a secure `JWT_SECRET`:**
-> Run the following one-liner in your terminal to generate a cryptographically secure 256-bit secret:
-> ```bash
-> python -c "import secrets; print(secrets.token_hex(32))"
-> ```
-> Copy the output and paste it into `JWT_SECRET` in `backend/.env`.
-
----
-
-### 2. Initialize Frontend Environment File
-
-Copy `frontend/.env.example` to `frontend/.env`:
-
-**On Linux / macOS:**
-```bash
 cp frontend/.env.example frontend/.env
 ```
 
-**On Windows (PowerShell):**
+**Windows (PowerShell):**
 ```powershell
+Copy-Item backend\.env.example backend\.env
 Copy-Item frontend\.env.example frontend\.env
 ```
 
-**On Windows (CMD):**
-```cmd
-copy frontend\.env.example frontend\.env
+*(Optional: Add your `OPENAI_API_KEY` in `backend/.env` to enable the AI Copilot).*
+
+### 3. Build & Launch Containers
+```bash
+docker compose up --build -d
 ```
 
-#### Frontend Environment Variables Reference (`frontend/.env`):
+### 4. Verify Running Services
+```bash
+docker compose ps
+```
+
+| Service | URL | Notes |
+| :--- | :--- | :--- |
+| **Frontend Web App** | [http://localhost:3000](http://localhost:3000) | Main user interface |
+| **Backend API Docs (Swagger)** | [http://localhost:8000/docs](http://localhost:8000/docs) | Interactive OpenAPI testing |
+| **Backend Health Check** | [http://localhost:8000/health](http://localhost:8000/health) | `{"status":"ok"}` |
+| **MongoDB Database** | `mongodb://localhost:27017` | Persisted to named volume `mongo_data` |
+
+To follow live logs:
+```bash
+docker compose logs -f backend
+```
+
+To stop containers:
+```bash
+docker compose down
+```
+
+---
+
+## Local Development Setup
+
+If you prefer running services directly on your host machine with instant hot-reloading:
+
+### Prerequisites
+- **Python:** 3.10 or 3.11+
+- **Node.js:** 18.0+ and npm 9+
+- **MongoDB:** Local instance or Docker container on port `27017` (e.g. `docker run -d -p 27017:27017 --name phonepe-mongo mongo:7`)
+
+---
+
+### Step 1: Start MongoDB
+Ensure a MongoDB instance is reachable at `mongodb://localhost:27017`.
+
+---
+
+### Step 2: Set Up Backend (FastAPI)
+
+1. Open a terminal and navigate to `backend`:
+   ```bash
+   cd backend
+   ```
+
+2. Create and activate a Python virtual environment:
+   - **Windows (PowerShell):**
+     ```powershell
+     python -m venv venv
+     .\venv\Scripts\Activate.ps1
+     ```
+   - **Windows (CMD):**
+     ```cmd
+     python -m venv venv
+     venv\Scripts\activate.bat
+     ```
+   - **macOS / Linux:**
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Configure `.env`:
+   Make sure `backend/.env` exists and contains your settings:
+   ```env
+   MONGO_URI=mongodb://localhost:27017
+   MONGO_DB_NAME=phonepe_analyzer
+   JWT_SECRET=use-a-strong-secret-key-here
+   JWT_ALGORITHM=HS256
+   JWT_EXPIRE_MINUTES=10080
+   CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+   UPLOAD_DIR=./uploads
+   OPENAI_API_KEY=your-openai-api-key-optional
+   OPENAI_MODEL=gpt-4o-mini
+   ```
+
+   > [!TIP]
+   > Generate a cryptographically secure 256-bit `JWT_SECRET`:
+   > ```bash
+   > python -c "import secrets; print(secrets.token_hex(32))"
+   > ```
+
+5. Start the backend development server:
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+   Interactive Swagger docs are now live at [http://localhost:8000/docs](http://localhost:8000/docs).
+
+---
+
+### Step 3: Set Up Frontend (React + Vite)
+
+1. Open a second terminal window and navigate to `frontend`:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Verify `frontend/.env`:
+   ```env
+   VITE_API_BASE_URL=/api
+   ```
+
+4. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
+
+5. Open [http://localhost:5173](http://localhost:5173) in your browser. Vite's proxy automatically routes all `/api/*` calls to the FastAPI backend at `http://localhost:8000`.
+
+---
+
+## Environment Variables Reference
+
+### Backend (`backend/.env`)
+
+| Variable | Default Value | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `MONGO_URI` | `mongodb://localhost:27017` | **Yes** | MongoDB connection string (`mongodb://mongo:27017` for Docker Compose). |
+| `MONGO_DB_NAME` | `phonepe_analyzer` | **Yes** | Database name to use in MongoDB. |
+| `JWT_SECRET` | `change-me-in-production` | **Yes** | Cryptographic secret for signing JWT access and refresh tokens. |
+| `JWT_ALGORITHM` | `HS256` | **Yes** | Encryption algorithm for JWT tokens. |
+| `JWT_EXPIRE_MINUTES` | `10080` | **Yes** | Token expiration window in minutes (10080 = 7 days). |
+| `CORS_ORIGINS` | `http://localhost:3000,http://localhost:5173` | **Yes** | Comma-separated list of permitted frontend client origins. |
+| `UPLOAD_DIR` | `/tmp/phonepe_uploads` | **Yes** | Local temporary scratch folder during PDF parsing. |
+| `OPENAI_API_KEY` | `""` | No | OpenAI API key (`sk-...`). Enables AI statement extraction and AI Copilot. |
+| `OPENAI_MODEL` | `gpt-4o-mini` | No | Model ID used for AI Copilot and structured extraction. |
+| `AWS_ACCESS_KEY_ID` | `""` | No | AWS Access Key for S3 PDF storage. If empty, local/Mongo storage is used. |
+| `AWS_SECRET_ACCESS_KEY` | `""` | No | AWS Secret Access Key for S3. |
+| `AWS_REGION` | `ap-south-1` | No | Target AWS region for S3 bucket operations. |
+| `S3_BUCKET_NAME` | `phonepe-analyzer-bucket`| No | AWS S3 bucket name. |
+
+### Frontend (`frontend/.env`)
 
 | Variable | Default Value | Description |
 | :--- | :--- | :--- |
-| `VITE_API_BASE_URL` | `/api` | Base path for all API calls. When set to `/api`, Vite's development proxy or Nginx in Docker will forward requests to the FastAPI backend at `http://localhost:8000`. |
+| `VITE_API_BASE_URL` | `/api` | Base API prefix. In dev, Vite proxies `/api` to `http://localhost:8000`. In Docker, Nginx handles forwarding. |
 
 ---
 
-## Step 3: Starting the Application
+## API Documentation
 
-You can run the full stack using **Method A (Docker Compose)** or **Method B (Local Manual Setup)**.
+SpendWise provides clean, versioned REST endpoints documented via OpenAPI/Swagger:
 
----
+### 1. Authentication (`/auth`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/auth/signup` | Register a new user account with name, email & password | No |
+| `POST` | `/auth/login` | Authenticate using OAuth2 password flow; returns access & refresh tokens | No |
+| `POST` | `/auth/refresh` | Exchange a valid refresh token for fresh tokens | No |
+| `DELETE`| `/auth/me` | **Permanently deletes account**, cascading across MongoDB & S3 | **Yes** |
 
-### Method A: Docker Compose (Fastest & Recommended)
+### 2. Statements & Uploads (`/statements`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/statements/upload` | Upload PDF statement (supports `pdf_password`, `statement_name`, `use_ai`) | **Yes** |
+| `GET` | `/statements` | List all uploaded statements for the authenticated user | **Yes** |
+| `PATCH`| `/statements/{id}` | Rename statement display name | **Yes** |
+| `GET` | `/statements/ai-status` | Check if OpenAI is configured and operational on the server | **Yes** |
 
-Docker Compose automatically spins up MongoDB, builds the FastAPI backend container, builds the React frontend container with Nginx, and connects them on an internal network.
+### 3. Transactions (`/transactions`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET` | `/transactions` | Filter & paginate transactions (search, date range, amount range, statement ID) | **Yes** |
+| `PATCH`| `/transactions/{id}` | Update transaction category/counterparty (supports `update_all_matching`) | **Yes** |
+| `DELETE`| `/transactions/{id}` | Delete a single transaction entry | **Yes** |
+| `GET` | `/transactions/categories/list` | Fetch all distinct categories for the user | **Yes** |
+| `GET` | `/transactions/export/csv` | Export filtered transactions to downloadable CSV & auto-archive to S3 | **Yes** |
 
-1. Ensure your `.env` files are configured as described in Step 2.
-2. In the project root, run:
-   ```bash
-   docker compose up --build
-   ```
-   *(Add `-d` to run containers detached in the background: `docker compose up --build -d`)*
+### 4. Analytics & Dashboard (`/dashboard`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET` | `/dashboard/summary` | Aggregate financial totals (Debits, Credits, Net, Daily/Monthly Averages) | **Yes** |
+| `GET` | `/dashboard/top-recipients` | Top N counterparties ranked by total spend | **Yes** |
+| `GET` | `/dashboard/trend` | Spending/income trend over time (`granularity=daily` or `monthly`) | **Yes** |
+| `GET` | `/dashboard/categories` | Expense breakdown grouped by category | **Yes** |
 
-3. Verify running containers:
-   ```bash
-   docker compose ps
-   ```
-
-4. **Access your services:**
-   - **Frontend Web App:** [http://localhost:3000](http://localhost:3000)
-   - **Backend API Interactive Docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
-   - **Backend Health Check:** [http://localhost:8000/health](http://localhost:8000/health)
-
-5. **Useful Docker commands:**
-   - View live logs: `docker compose logs -f`
-   - View backend logs only: `docker compose logs -f backend`
-   - Stop containers: `docker compose down`
-   - Stop containers and remove database volume: `docker compose down -v`
-
----
-
-### Method B: Local Development (Manual Setup)
-
-Follow this method if you want instant hot-reloading for code modifications without rebuilding containers.
-
-#### 1. Ensure MongoDB is Running
-Make sure MongoDB is running on port 27017 (e.g., via Docker `docker run -d -p 27017:27017 --name phonepe-mongo mongo:7` or your local service).
-
-Make sure `backend/.env` has:
-```env
-MONGO_URI=mongodb://localhost:27017
-```
-
-#### 2. Start the FastAPI Backend
-
-Open a terminal and navigate to `backend`:
-
-```bash
-cd backend
-```
-
-**Create and activate a Python virtual environment:**
-
-- **On macOS / Linux:**
-  ```bash
-  python3 -m venv venv
-  source venv/bin/activate
-  ```
-
-- **On Windows (PowerShell):**
-  ```powershell
-  python -m venv venv
-  .\venv\Scripts\Activate.ps1
-  ```
-  *(If PowerShell gives a script execution policy error, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first).*
-
-- **On Windows (Command Prompt):**
-  ```cmd
-  python -m venv venv
-  venv\Scripts\activate.bat
-  ```
-
-**Install Python dependencies:**
-```bash
-pip install -r requirements.txt
-```
-
-**Start the FastAPI development server:**
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-You should see logs indicating successful startup and index creation:
-```
-INFO:     Started server process
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-```
-
-Test the backend health in your browser or with curl:
-```bash
-curl http://localhost:8000/health
-# Output: {"status":"ok"}
-```
-
-Interactive API documentation is now live at [http://localhost:8000/docs](http://localhost:8000/docs).
+### 5. AI Copilot (`/assistant`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/assistant/chat` | Send conversational prompt; returns agent reply grounded in MongoDB | **Yes** |
 
 ---
 
-#### 3. Start the React Frontend
+## Deep Dive: PDF Extraction Engine
 
-Open a second terminal window and navigate to `frontend`:
+PhonePe statements feature tight, multi-column tables where transactions frequently span multiple wrapped lines. Traditional PDF parsing approaches (`extract_text()`) break because:
+- Newline characters cut arbitrary text mid-cell (e.g. `INR\n17000.00` becomes `INR` on one line and `17000.00` on the next, often misread as `7000.00` or corrupting adjacent column data).
+- Column coordinates vary dynamically depending on orientation and layout version.
 
-```bash
-cd frontend
+### The SpendWise Dual-Engine Solution
+
+```
+┌────────────────────────────────────────────────────────┐
+│               Uploaded PhonePe Statement PDF           │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+          [ Coordinate-Based Word Clustering ]
+          • Extracts bounding boxes (x0, top) via pdfplumber
+          • Clusters words into horizontal rows via vertical proximity
+          • Detects column bounds (Date, Details, Type, Amount)
+          • Anchors on Date cells to assemble cohesive transaction blocks
+                           │
+              ┌────────────┴────────────┐
+              ▼                         ▼
+   [ OpenAI Engine (Primary) ]   [ Deterministic Fallback ]
+   • Sends clean block to LLM    • Regex parser over blocks
+   • Structured JSON extraction  • Reassembles split amounts
+   • Standardizes categories     • Resolves UTR / Txn IDs
+              │                         │
+              └────────────┬────────────┘
+                           ▼
+          [ Pydantic Schema Validation ]
+          • Validates ISO dates, positive floats, transaction types
+          • Rejects malformed records / hallucinations
+                           │
+                           ▼
+          [ Deduplication & Compound Indexing ]
+          • Unique sparse index on (user_id, txn_id)
+          • Deduplicates on (date, amount, type, counterparty)
+                           │
+                           ▼
+                  [ MongoDB Storage ]
 ```
 
-**Install Node dependencies:**
-```bash
-npm install
-```
-
-**Start Vite development server:**
-```bash
-npm run dev
-```
-
-You should see output similar to:
-```
-  VITE v5.4.8  ready in 210 ms
-
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: http://192.168.1.x:5173/
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-> [!NOTE]
-> Vite is configured to proxy all `/api/*` calls directly to `http://localhost:8000` (see `frontend/vite.config.js`). You do not need to configure custom CORS proxies for local dev.
+1. **Word Bounding-Box Clustering (`pdfplumber`):** Rather than reading raw strings, SpendWise extracts low-level words with exact coordinate positions (`x0`, `top`). Rows are clustered using vertical proximity tolerances.
+2. **Transaction Block Reassembly:** Each block is anchored by a date stamp. Wrapped text within the `Details` or `Amount` column is merged into a single cohesive transaction unit before parsing.
+3. **Structured AI Extraction:** When OpenAI is configured, the reassembled transaction block is processed via `gpt-4o-mini` with a strict JSON schema. The model extracts the counterparty, normalized category, ISO date, transaction type, amount, and PhonePe/UTR transaction reference.
+4. **Resilient Local Fallback:** If OpenAI is not configured or an API error occurs, an internal deterministic regex engine executes across the coordinate-assembled blocks with zero external dependencies.
+5. **Pydantic Validation Guardrail:** Extracted records pass through `ExtractedTransactionValidation` before reaching the database, ensuring 100% data integrity.
 
 ---
 
-## Step 4: End-to-End Verification & First Use
+## Security & Multi-Tenancy
 
-1. **Sign Up & Log In:**
-   - Go to `http://localhost:5173` (or `http://localhost:3000` in Docker).
-   - Click "Need an account? Sign up".
-   - Register with your name, email, and password. You will receive a JWT and be logged in immediately.
-
-2. **Upload a Statement:**
-   - Download an official statement PDF from your PhonePe app (*History -> Download Statement*).
-   - Go to the **Upload Statement** tab in the dashboard.
-   - If your PDF has an opening password (common for bank and UPI statements), enter it in the password field.
-   - Upload the PDF. The backend will parse the pages and return the count of extracted transactions.
-
-3. **Explore Dashboard & Analytics:**
-   - Visit the **Dashboard** to see Total Debits, Total Credits, Net Cash Flow, Category Breakdown pie chart, Monthly Spending trend, and Top 5 Recipients.
-   - Visit the **Transactions** view to search, filter by date/amount, edit categories, or export your filtered history as a CSV file.
-
-4. **Test the AI Assistant:**
-   - Ensure `OPENAI_API_KEY` is provided in `backend/.env`.
-   - Navigate to the **AI Assistant** tab.
-   - Ask questions like:
-     - *"How much did I spend in total last month?"*
-     - *"Who did I send the most money to?"*
-     - *"Did I receive any payments larger than ₹5,000?"*
-   - The assistant autonomously executes tool functions against your scoped MongoDB records to answer with real data.
+- **Hardened Tenant Isolation:** Every transaction, statement, and export record is tagged with the user's UUID `user_id`. Backend endpoints extract `user_id` strictly from the cryptographically verified JWT payload.
+- **Server-Closed AI Tools:** AI function tools are dynamically instantiated in a closure that fixes `user_id` on the server. The LLM has no mechanism or parameter to request data outside the authenticated user's scope.
+- **Credential Protection:** Passwords are encrypted with `bcrypt` (12 rounds) and never stored or logged in plain text.
+- **S3 Object Key Isolation:** Remote statement PDFs and CSV exports are strictly partitioned under `{user_id}/statements/` and `{user_id}/exports/`.
+- **Complete Account Purge:** Triggering account deletion cascades across MongoDB (`users`, `statements`, `transactions`) and triggers asynchronous S3 folder deletion via AWS Boto3.
 
 ---
 
-## How PDF Extraction Works
+## Frequently Asked Questions
 
-PhonePe and bank statement PDFs are parsed using a dual-engine architecture combining **Coordinate-Based Word Clustering & Transaction Block Grouping** and **OpenAI AI Precision Extraction** with a local deterministic regex fallback:
+<details>
+<summary><strong>1. Do I need an OpenAI API Key to use SpendWise?</strong></summary>
 
-1. **Coordinate-Based Clustering (`pdfplumber`):**
-   - Extracts word bounding boxes (`x0, top`) instead of naive `.extract_text()` newline splits.
-   - Clusters words into horizontal rows by vertical proximity (`y_tolerance`).
-   - Dynamically identifies column boundaries (`Date`, `Details`, `Type`, `Amount`) across any page width.
-   - Groups multi-line rows into transaction blocks anchored on the Date cell, merging wrapped cells (e.g. `INR\n17000.00` is kept intact as `INR 17000.00`, completely eliminating digit-splitting bugs).
-2. **OpenAI AI Precision Extraction (Primary Engine):**
-   - Sends clean, coordinate-isolated blocks to OpenAI (`gpt-4o-mini` or the model configured in `OPENAI_MODEL`).
-   - Uses structured JSON extraction with schema validation to extract:
-     - `date`: Validated ISO date (`YYYY-MM-DD`)
-     - `type`: `DEBIT` or `CREDIT`
-     - `counterparty`: Clean person or merchant name
-     - `amount`: Exact positive decimal float
-     - `description`: Transaction details, notes, or purpose
-     - `txn_id`: Unique PhonePe transaction ID, UTR, or Order ID
-     - `category`: Categorization (e.g., Food, Groceries, Shopping, Travel, Recharge & Bills)
-   - Strict validation via Pydantic (`ExtractedTransactionValidation`) ensures zero hallucinations or malformed data reach MongoDB.
-3. **Deterministic Local Fallback Engine:**
-   - If OpenAI is disabled or unavailable, the parser executes over the coordinate-assembled transaction blocks.
-   - Evaluates reassembled amount strings and details without line-splitting bugs.
-4. **Strict Deduplication & Zero Data Loss:**
-   - Deduplicates on `(user_id, txn_id)` and `(date, amount, type, counterparty)`.
-   - Records extraction method (`ai` vs `regex_fallback`) and metadata in the database.
+No! The application is fully functional without an OpenAI key. If `OPENAI_API_KEY` is omitted, SpendWise automatically uses its deterministic coordinate + regex parsing engine to extract all transactions, and all dashboard analytics, filtering, and CSV export capabilities operate normally. The key is only required if you wish to use the conversational AI Copilot or the AI extraction mode.
+</details>
 
----
+<details>
+<summary><strong>2. How do I get my PhonePe statement PDF?</strong></summary>
 
-## AWS & Production Deployment
+Open the PhonePe mobile app, navigate to **History**, tap **Download Statement**, select your desired date range (e.g., last 3 months, 6 months, or custom financial year), and download the PDF. If the PDF requires a password, enter your registered mobile number or date of birth in the password field when uploading.
+</details>
 
-- **S3 Bucket Configuration:**
-  - Create a private S3 bucket.
-  - Set `S3_BUCKET_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION` in `backend/.env`.
-  - In an ECS or EC2 environment, use IAM Task / Instance Roles instead of hardcoded access keys (boto3 discovers roles automatically).
-- **MongoDB in Production:**
-  - Use MongoDB Atlas or AWS DocumentDB instead of a single container.
-  - Set `MONGO_URI` to your replica set connection string.
-- **Production Containers:**
-  - `backend/Dockerfile` and `frontend/Dockerfile` are self-contained. Push them to Amazon ECR and deploy via AWS ECS (Fargate) or Kubernetes.
-  - Inject secrets (`JWT_SECRET`, `OPENAI_API_KEY`, etc.) via AWS Secrets Manager or SSM Parameter Store.
+<details>
+<summary><strong>3. Can I upload multiple statements for different months?</strong></summary>
+
+Yes. SpendWise allows uploading multiple statements. You can switch between statements using the dropdown selector in the sidebar, rename them (e.g., "Jan 2024", "Feb 2024"), or select "All Statements (Combined)" to view your aggregate multi-month financial picture.
+</details>
+
+<details>
+<summary><strong>4. How do I change an incorrectly categorized transaction?</strong></summary>
+
+In the **Transactions** view, select any transaction and choose a new category from the dropdown (or type a custom one). You can check "Apply to all matching transactions" to instantly update all historical and future transactions associated with that counterparty.
+</details>
 
 ---
 
-## Security Architecture
+## Author
 
-- **Tenant Isolation:** Every transaction and statement record has a `user_id` field. All MongoDB queries in endpoints and AI tools explicitly filter by the authenticated user's ID extracted from the validated JWT token.
-- **AI Tool Sandboxing:** The AI Assistant functions are programmatically closed over the caller's `user_id` server-side. The model cannot override or manipulate user scoping via prompt injection.
-- **Password Security:** Passwords are never stored in plaintext; they are securely hashed using `passlib` with `bcrypt`.
-- **S3 Scoping:** S3 object keys follow `{user_id}/statements/{statement_id}.pdf` preventing unauthorized cross-user file access.
+Developed with care by **Shashank Patil**:
+
+- **GitHub:** [@shashankpatil-cs](https://github.com/shashankpatil-cs)
+- **Repository:** [shashankpatil-cs/PPBankStatAnaly](https://github.com/shashankpatil-cs/PPBankStatAnaly)
 
 ---
 
-## Troubleshooting & FAQs
+## License
 
-### 1. Backend fails with `ServerSelectionTimeoutError` (MongoDB Connection Refused)
-- **Cause:** FastAPI cannot reach MongoDB at `MONGO_URI`.
-- **Fix:**
-  - If running locally without Docker: ensure MongoDB is running (`docker ps` or check local service) and verify that `MONGO_URI=mongodb://localhost:27017` in `backend/.env`.
-  - If running inside Docker Compose: ensure `MONGO_URI=mongodb://mongo:27017` (this is automatically injected by `docker-compose.yml`).
-
-### 2. PowerShell: "File ... Activate.ps1 cannot be loaded because running scripts is disabled on this system"
-- **Cause:** Windows PowerShell execution policy prevents running unverified scripts.
-- **Fix:** In PowerShell, run:
-  ```powershell
-  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-  .\venv\Scripts\Activate.ps1
-  ```
-
-### 3. Port 8000 or Port 27017 Already in Use
-- **Cause:** Another process or previous container is occupying the port.
-- **Fix:**
-  - Find the occupying process:
-    - On Windows: `netstat -ano | findstr :8000`
-    - On Linux/macOS: `lsof -i :8000`
-  - Or stop old Docker containers: `docker stop $(docker ps -q)`
-
-### 4. AI Assistant returns an error or empty response
-- **Cause:** `OPENAI_API_KEY` is empty, expired, or invalid.
-- **Fix:** Check `backend/.env` and verify your key is active and has access to `OPENAI_MODEL` (`gpt-4o-mini`).
-
-### 5. PDF Upload returns 422 "Could not read PDF"
-- **Cause:** The PDF is corrupted or password-protected and no password was provided.
-- **Fix:** Enter the PDF password in the password input box before clicking upload. (PhonePe statement passwords are often registered mobile numbers or date of birth formats depending on the account type).
+This project is licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute it for personal and commercial applications.
