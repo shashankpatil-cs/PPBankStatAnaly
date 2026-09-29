@@ -62,3 +62,21 @@ def generate_presigned_url(key: str, expires_in: int = 3600) -> Optional[str]:
     except ClientError as e:
         logger.error("Failed to presign URL for %s: %s", key, e)
         return None
+
+def delete_user_folder(user_id: str):
+    if not settings.aws_access_key_id:
+        return
+    try:
+        client = get_s3_client()
+        prefix = f"{user_id}/"
+        paginator = client.get_paginator('list_objects_v2')
+        for page in paginator.paginate(Bucket=settings.s3_bucket_name, Prefix=prefix):
+            if 'Contents' in page:
+                objects_to_delete = [{'Key': obj['Key']} for obj in page['Contents']]
+                if objects_to_delete:
+                    client.delete_objects(
+                        Bucket=settings.s3_bucket_name,
+                        Delete={'Objects': objects_to_delete}
+                    )
+    except ClientError as e:
+        logger.error("Failed to delete user folder %s: %s", user_id, e)

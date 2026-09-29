@@ -13,6 +13,7 @@ from app.auth import (
 )
 from app.config import settings
 from app.database import users_collection, transactions_collection, statements_collection
+from app.services.s3_service import delete_user_folder
 from app.schemas import UserCreate, Token, RefreshRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -72,6 +73,12 @@ async def refresh(payload: RefreshRequest):
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_account(current_user: dict = Depends(get_current_user)):
     user_id = current_user["_id"]
+    
+    # Delete all associated S3 files in a background thread so we don't block the async loop
+    import asyncio
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, delete_user_folder, user_id)
+    
     await transactions_collection.delete_many({"user_id": user_id})
     await statements_collection.delete_many({"user_id": user_id})
     await users_collection.delete_one({"_id": user_id})
