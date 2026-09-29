@@ -9,9 +9,10 @@ from app.auth import (
     verify_password,
     create_access_token,
     create_refresh_token,
+    get_current_user,
 )
 from app.config import settings
-from app.database import users_collection
+from app.database import users_collection, transactions_collection, statements_collection
 from app.schemas import UserCreate, Token, RefreshRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -66,3 +67,11 @@ async def refresh(payload: RefreshRequest):
     new_access = create_access_token({"sub": user_id})
     new_refresh = create_refresh_token({"sub": user_id})
     return Token(access_token=new_access, refresh_token=new_refresh)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(current_user: dict = Depends(get_current_user)):
+    user_id = current_user["_id"]
+    await transactions_collection.delete_many({"user_id": user_id})
+    await statements_collection.delete_many({"user_id": user_id})
+    await users_collection.delete_one({"_id": user_id})

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { listTransactions, updateTransaction, listCategories, exportCsvUrl } from "../api.js";
+import { listTransactions, updateTransaction, listCategories } from "../api.js";
 
 function fmtInr(n) {
   return new Intl.NumberFormat("en-IN", {
@@ -40,6 +40,12 @@ function getCategoryClass(cat) {
   if (lower.includes("invest") || lower.includes("fund") || lower.includes("gold")) return "cat-investment";
   if (lower === "uncategorized") return "cat-uncategorized";
   return "cat-custom";
+}
+
+function cleanDescription(desc) {
+  if (!desc) return "";
+  const match = desc.match(/^(.*?(?:Debited from|Credited to) XX\d+)/i);
+  return match ? match[1].trim() : desc;
 }
 
 export default function TransactionTable() {
@@ -143,7 +149,7 @@ export default function TransactionTable() {
       setIsCustomCategory(true);
       setCustomCategoryInput(curCat);
     }
-    setUpdateAllMatching(false);
+    setUpdateAllMatching(true);
   };
 
   const closeEditModal = () => {
@@ -259,19 +265,6 @@ export default function TransactionTable() {
             Reset
           </button>
         )}
-        <a
-          className="btn secondary"
-          style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", marginLeft: "auto" }}
-          href={exportCsvUrl({
-            ...(search ? { search } : {}),
-            ...(txnType ? { txn_type: txnType } : {}),
-            ...(categoryFilter ? { category: categoryFilter } : {}),
-            ...(startDate ? { start_date: startDate } : {}),
-            ...(endDate ? { end_date: endDate } : {}),
-          })}
-        >
-          Export CSV
-        </a>
       </form>
 
       <div className="card">
@@ -297,18 +290,14 @@ export default function TransactionTable() {
               <tbody>
                 {items.map((t) => (
                   <tr key={t._id}>
-                    <td style={{ whiteSpace: "nowrap" }}>{t.date}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{t.date ? t.date.split("-").reverse().join("/") : "—"}</td>
                     <td style={{ whiteSpace: "nowrap", color: "var(--text-muted)" }}>{t.time || "—"}</td>
                     <td>
                       <div style={{ fontWeight: 500, color: "var(--text)" }}>{t.counterparty}</div>
-                      {t.txn_id && (
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                          ID: {t.txn_id}
-                        </div>
-                      )}
                     </td>
                     <td style={{ maxWidth: 220, fontSize: 13, color: "var(--text-muted)" }}>
-                      {t.description || "—"}
+                      <div style={{ color: "var(--text)" }}>{cleanDescription(t.description) || (t.type === "CREDIT" ? "Credited" : "Debited")}</div>
+                      {t.txn_id && <div style={{ marginTop: 2 }}>UTR: {t.txn_id}</div>}
                     </td>
                     <td>
                       <span className={`badge ${t.type === "DEBIT" ? "debit" : "credit"}`}>
@@ -382,16 +371,6 @@ export default function TransactionTable() {
                   value={editCounterparty}
                   onChange={(e) => setEditCounterparty(e.target.value)}
                   placeholder="e.g. Swiggy, Rakesh (Friend), Mom, Grocery Store"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>Description / Note</label>
-                <input
-                  type="text"
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  placeholder="e.g. Food delivery, Monthly rent, Dinner split"
                 />
               </div>
 

@@ -65,40 +65,6 @@ export default function UploadPDF() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <h2>Upload Statement</h2>
-        {aiStatus.available ? (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "4px 12px",
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 600,
-              background: "linear-gradient(135deg, rgba(95,37,159,0.12), rgba(124,58,237,0.18))",
-              color: "var(--purple)",
-              border: "1px solid rgba(95,37,159,0.25)",
-            }}
-          >
-            <span>✨</span> OpenAI AI Engine Active ({aiStatus.model})
-          </span>
-        ) : (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "4px 12px",
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 500,
-              background: "#f1f5f9",
-              color: "#64748b",
-            }}
-          >
-            Deterministic Coordinate Regex Engine
-          </span>
-        )}
       </div>
 
       <p className="muted" style={{ marginBottom: 20 }}>
@@ -106,38 +72,6 @@ export default function UploadPDF() {
         Transactions are automatically extracted, categorized, and added to your personal analytics.
       </p>
 
-      {/* AI Extraction Options Card */}
-      <div
-        className="card"
-        style={{
-          marginBottom: 20,
-          background: "linear-gradient(to right, #ffffff, #faf7fe)",
-          borderColor: useAi ? "rgba(95,37,159,0.3)" : "var(--border)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
-              <span>✨</span> AI Precision Extraction
-            </div>
-            <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
-              Uses OpenAI ({aiStatus.model || "gpt-4o-mini"}) with word-coordinate clustering to extract exact dates, amounts, counterparty names, descriptions, and transaction IDs with 100% precision.
-            </div>
-          </div>
-          <label style={{ display: "flex", alignItems: "center", cursor: "pointer", userSelect: "none" }}>
-            <input
-              type="checkbox"
-              checked={useAi}
-              onChange={(e) => setUseAi(e.target.checked)}
-              disabled={!aiStatus.available}
-              style={{ width: 18, height: 18, cursor: "pointer", accentColor: "var(--purple)" }}
-            />
-            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 500 }}>
-              {useAi ? "Enabled" : "Disabled (Regex Fallback)"}
-            </span>
-          </label>
-        </div>
-      </div>
 
       {/* Upload Dropzone */}
       <div
@@ -146,12 +80,8 @@ export default function UploadPDF() {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         style={{
-          border: dragOver ? "2px dashed var(--purple)" : "2px dashed #cbd5e1",
-          borderRadius: 14,
-          padding: "36px 20px",
-          textAlign: "center",
-          background: dragOver ? "rgba(95,37,159,0.04)" : "#ffffff",
-          transition: "all 0.2s ease",
+          background: dragOver ? "rgba(139, 92, 246, 0.15)" : undefined,
+          borderColor: dragOver ? "var(--purple)" : undefined,
         }}
       >
         <div style={{ fontSize: 36, marginBottom: 8 }}>📄</div>
@@ -199,13 +129,13 @@ export default function UploadPDF() {
               boxShadow: "0 2px 8px rgba(95,37,159,0.25)",
             }}
           >
-            {uploading ? `Processing... ${progress > 0 ? progress + "%" : ""}` : (useAi ? "✨ Extract with AI" : "Extract with Regex")}
+            {uploading ? `Processing... ${progress > 0 ? progress + "%" : ""}` : "Extract Statement"}
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="error-text" style={{ marginTop: 16, padding: "10px 14px", borderRadius: 8, background: "#fef2f2" }}>
+        <div className="error-text" style={{ marginTop: 16, padding: "10px 14px", borderRadius: 8, background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
           ⚠️ {error}
         </div>
       )}
@@ -216,7 +146,7 @@ export default function UploadPDF() {
           style={{
             marginTop: 24,
             borderLeft: "4px solid var(--green)",
-            background: "linear-gradient(to right, #ffffff, #f0fdf4)",
+            background: "rgba(16, 185, 129, 0.05)",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -227,18 +157,6 @@ export default function UploadPDF() {
                 <strong>{result.filename}</strong>.
               </p>
             </div>
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                padding: "3px 10px",
-                borderRadius: 12,
-                background: result.extraction_method === "ai" ? "rgba(95,37,159,0.12)" : "#f1f5f9",
-                color: result.extraction_method === "ai" ? "var(--purple)" : "#475569",
-              }}
-            >
-              {result.extraction_method === "ai" ? "✨ AI Model Extracted" : "⚡ Coordinate Regex Extracted"}
-            </span>
           </div>
 
           {result.transactions_failed_to_parse > 0 && (

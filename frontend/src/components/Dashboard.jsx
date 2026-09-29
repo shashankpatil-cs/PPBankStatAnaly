@@ -149,7 +149,7 @@ export default function Dashboard() {
           </div>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => fmtInr(v)} />
@@ -263,7 +263,7 @@ export default function Dashboard() {
                   layout="vertical"
                   margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255, 255, 255, 0.1)" />
                   <XAxis
                     type="number"
                     tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
@@ -294,8 +294,8 @@ export default function Dashboard() {
             </div>
 
             {/* Ranked Leaderboard List */}
-            <div style={{ background: "#fafafa", borderRadius: 12, padding: "12px 16px", border: "1px solid #f1f5f9" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingBottom: 8, borderBottom: "1px solid #e2e8f0" }}>
+            <div style={{ background: "rgba(255, 255, 255, 0.03)", borderRadius: 12, padding: "12px 16px", border: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>
                   Rank & Recipient
                 </span>

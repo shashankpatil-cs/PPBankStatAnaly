@@ -36,6 +36,8 @@ export const login = (email, password) => {
   });
 };
 
+export const deleteAccount = () => api.delete("/auth/me");
+
 // ---- Statements ----
 export const getAiStatus = () => api.get("/statements/ai-status");
 
