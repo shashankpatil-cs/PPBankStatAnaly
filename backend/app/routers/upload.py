@@ -1,8 +1,8 @@
 import os
 import uuid
 from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel
 
 from app.auth import get_current_user
 from app.config import settings
@@ -50,6 +50,7 @@ async def upload_statement(
     file: UploadFile = File(...),
     pdf_password: str | None = Form(default=None),
     use_ai: bool = Form(default=True),
+    statement_name: str | None = Form(default=None),
     current_user: dict = Depends(get_current_user),
 ):
     if not file.filename.lower().endswith(".pdf"):
@@ -74,11 +75,8 @@ async def upload_statement(
         contents, key=f"{user_id}/statements/{statement_id}.pdf", content_type="application/pdf"
     )
 
-    # Clean up previous transactions for the same statement if re-uploaded
-    existing_stmts = await statements_collection.find({"user_id": user_id, "filename": file.filename}).to_list(None)
-    for old_s in existing_stmts:
-        await transactions_collection.delete_many({"statement_id": old_s["_id"], "user_id": user_id})
-        await statements_collection.delete_one({"_id": old_s["_id"]})
+    # We no longer delete previous statements with the same filename.
+    # The user can have multiple statements and rename them.
 
     if parse_result.transactions:
         docs = []
@@ -107,11 +105,13 @@ async def upload_statement(
             except Exception:
                 pass
 
+    display_name = (statement_name or "").strip() or file.filename
+
     await statements_collection.insert_one(
         {
             "_id": statement_id,
             "user_id": user_id,
-            "filename": file.filename,
+            "filename": display_name,
             "uploaded_at": datetime.now(timezone.utc),
             "transactions_extracted": len(parse_result.transactions),
             "transactions_failed_to_parse": len(parse_result.failed_blocks),
@@ -125,7 +125,7 @@ async def upload_statement(
 
     return UploadResponse(
         statement_id=statement_id,
-        filename=file.filename,
+        filename=display_name,
         transactions_extracted=len(parse_result.transactions),
         transactions_failed_to_parse=len(parse_result.failed_blocks),
         extraction_method=parse_result.extraction_method,
@@ -137,3 +137,21 @@ async def upload_statement(
 async def list_statements(current_user: dict = Depends(get_current_user)):
     cursor = statements_collection.find({"user_id": current_user["_id"]}).sort("uploaded_at", -1)
     return await cursor.to_list(length=None)
+
+
+class StatementUpdate(BaseModel):
+    filename: str
+
+@router.patch("/{statement_id}")
+async def update_statement(
+    statement_id: str,
+    payload: StatementUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    result = await statements_collection.update_one(
+        {"_id": statement_id, "user_id": current_user["_id"]},
+        {"$set": {"filename": payload.filename}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Statement not found")
+    return {"status": "updated", "filename": payload.filename}

@@ -24,8 +24,11 @@ def _build_query(
     max_amount: Optional[float],
     start_date: Optional[date],
     end_date: Optional[date],
+    statement_id: Optional[str] = None,
 ):
     query: dict = {"user_id": user_id}
+    if statement_id:
+        query["statement_id"] = statement_id
     if search:
         query["$or"] = [
             {"counterparty": {"$regex": search, "$options": "i"}},
@@ -63,13 +66,14 @@ async def list_transactions(
     max_amount: Optional[float] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    statement_id: Optional[str] = None,
     sort_by: str = Query("date", pattern="^(date|amount)$"),
     sort_dir: int = Query(-1, ge=-1, le=1),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
 ):
     query = _build_query(
-        current_user["_id"], search, txn_type, category, min_amount, max_amount, start_date, end_date
+        current_user["_id"], search, txn_type, category, min_amount, max_amount, start_date, end_date, statement_id
     )
     total = await transactions_collection.count_documents(query)
     cursor = (
@@ -144,8 +148,9 @@ async def export_csv(
     current_user: dict = Depends(get_current_user),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    statement_id: Optional[str] = None,
 ):
-    query = _build_query(current_user["_id"], None, None, None, None, None, start_date, end_date)
+    query = _build_query(current_user["_id"], None, None, None, None, None, start_date, end_date, statement_id)
     docs = await transactions_collection.find(query).sort("date", -1).to_list(length=None)
     df = analytics.transactions_to_df(docs)
     csv_bytes = analytics.to_csv_bytes(df)

@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { uploadStatement, getAiStatus } from "../api.js";
+import { ActiveStatementContext } from "../context.js";
 
 export default function UploadPDF() {
+  const { setActiveStatementId, triggerRefresh } = useContext(ActiveStatementContext);
   const [file, setFile] = useState(null);
+  const [statementName, setStatementName] = useState("");
   const [pdfPassword, setPdfPassword] = useState("");
   const [useAi, setUseAi] = useState(true);
   const [aiStatus, setAiStatus] = useState({ available: false, model: "" });
@@ -28,18 +31,43 @@ export default function UploadPDF() {
       });
   }, []);
 
+  const isNameEmpty = !statementName.trim();
+  const isLocked = !file || isNameEmpty;
+  const canExtract = !isLocked && !uploading;
+
+  const handleFileChange = (selectedFile) => {
+    if (selectedFile) {
+      if (selectedFile.name.toLowerCase().endsWith(".pdf")) {
+        setFile(selectedFile);
+        setStatementName(""); // PDF must be named before Extract Statement button is unlocked
+        setError("");
+        setResult(null);
+      } else {
+        setError("Please upload a valid PDF statement file.");
+      }
+    }
+  };
+
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || isNameEmpty) return;
     setError("");
     setResult(null);
     setUploading(true);
     try {
-      const res = await uploadStatement(file, pdfPassword, useAi, (evt) => {
-        if (evt.total) {
-          setProgress(Math.round((evt.loaded * 100) / evt.total));
-        }
-      });
+      const res = await uploadStatement(
+        file,
+        pdfPassword,
+        useAi,
+        (evt) => {
+          if (evt.total) {
+            setProgress(Math.round((evt.loaded * 100) / evt.total));
+          }
+        },
+        statementName.trim()
+      );
       setResult(res.data);
+      setActiveStatementId(res.data.statement_id);
+      triggerRefresh();
     } catch (err) {
       setError(err.response?.data?.detail || "Upload and parsing failed. Please check the PDF format.");
     } finally {
@@ -51,14 +79,16 @@ export default function UploadPDF() {
     e.preventDefault();
     setDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile.name.toLowerCase().endsWith(".pdf")) {
-        setFile(droppedFile);
-        setError("");
-      } else {
-        setError("Please upload a valid PDF statement file.");
-      }
+      handleFileChange(e.dataTransfer.files[0]);
     }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setStatementName("");
+    setPdfPassword("");
+    setResult(null);
+    setError("");
   };
 
   return (
@@ -72,7 +102,6 @@ export default function UploadPDF() {
         Transactions are automatically extracted, categorized, and added to your personal analytics.
       </p>
 
-
       {/* Upload Dropzone */}
       <div
         className={`upload-dropzone ${dragOver ? "drag-over" : ""}`}
@@ -84,8 +113,8 @@ export default function UploadPDF() {
           borderColor: dragOver ? "var(--purple)" : undefined,
         }}
       >
-        <div style={{ fontSize: 36, marginBottom: 8 }}>📄</div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
+        <div style={{ fontSize: 38, marginBottom: 8 }}>📄</div>
+        <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
           {file ? file.name : "Drag & drop your PhonePe statement PDF here"}
         </div>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4, marginBottom: 14 }}>
@@ -96,7 +125,8 @@ export default function UploadPDF() {
           id="pdf-file-input"
           type="file"
           accept="application/pdf"
-          onChange={(e) => setFile(e.target.files[0])}
+          onClick={(e) => { e.target.value = null; }}
+          onChange={(e) => handleFileChange(e.target.files?.[0])}
           style={{ display: "none" }}
         />
         <label
@@ -104,32 +134,145 @@ export default function UploadPDF() {
           className="btn secondary"
           style={{ cursor: "pointer", display: "inline-block", padding: "8px 18px", fontSize: 13 }}
         >
-          {file ? "Change File" : "Browse PDF"}
+          {file ? "Change PDF" : "Browse PDF"}
         </label>
 
-        <div style={{ marginTop: 20 }}>
-          <input
-            type="password"
-            placeholder="Statement password (if PDF is password-protected)"
-            value={pdfPassword}
-            onChange={(e) => setPdfPassword(e.target.value)}
-            style={{ width: 340, maxWidth: "100%", padding: "9px 14px", fontSize: 13 }}
-          />
-        </div>
-
-        <div style={{ marginTop: 18 }}>
-          <button
-            onClick={handleUpload}
-            disabled={!file || uploading}
+        {/* Statement Configuration Card - displayed once PDF is uploaded/selected */}
+        {file && (
+          <div
             style={{
-              padding: "10px 24px",
-              fontSize: 14,
-              fontWeight: 600,
-              minWidth: 180,
-              boxShadow: "0 2px 8px rgba(95,37,159,0.25)",
+              marginTop: 24,
+              padding: "20px 24px",
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid var(--border)",
+              borderRadius: "14px",
+              textAlign: "left",
+              maxWidth: 460,
+              marginLeft: "auto",
+              marginRight: "auto",
             }}
           >
-            {uploading ? `Processing... ${progress > 0 ? progress + "%" : ""}` : "Extract Statement"}
+            {/* Statement Name Input (Required before unlocking extraction) */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <label
+                  htmlFor="statement-name-input"
+                  style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  Statement Name <span style={{ color: "var(--red)" }}>*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setStatementName(file.name.replace(/\.pdf$/i, ""))}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--purple)",
+                    fontSize: 12,
+                    padding: 0,
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    boxShadow: "none",
+                  }}
+                  title="Use original file name without .pdf extension"
+                >
+                  Use file name
+                </button>
+              </div>
+
+              <input
+                id="statement-name-input"
+                type="text"
+                placeholder="e.g., PhonePe March 2024 or Personal Account"
+                value={statementName}
+                onChange={(e) => setStatementName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canExtract) {
+                    handleUpload();
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  fontSize: 14,
+                  borderRadius: "8px",
+                  border: isNameEmpty ? "1px solid rgba(239, 68, 68, 0.5)" : "1px solid rgba(16, 185, 129, 0.5)",
+                }}
+                autoFocus
+              />
+
+              <div style={{ marginTop: 6, fontSize: 12 }}>
+                {isNameEmpty ? (
+                  <span style={{ color: "#f87171", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    🔒 Please name this PDF statement to unlock extraction.
+                  </span>
+                ) : (
+                  <span style={{ color: "var(--green)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    ✓ Named: Ready to extract!
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Statement Password (Optional) */}
+            <div>
+              <label
+                htmlFor="pdf-password-input"
+                style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 6 }}
+              >
+                Statement Password <span style={{ fontSize: 11, fontWeight: "normal" }}>(Optional)</span>
+              </label>
+              <input
+                id="pdf-password-input"
+                type="password"
+                placeholder="Password (if PDF is password-protected)"
+                value={pdfPassword}
+                onChange={(e) => setPdfPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canExtract) {
+                    handleUpload();
+                  }
+                }}
+                style={{ width: "100%", padding: "9px 14px", fontSize: 13, borderRadius: "8px" }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Extract Statement Action */}
+        <div style={{ marginTop: 22 }}>
+          <button
+            id="extract-statement-button"
+            onClick={handleUpload}
+            disabled={!canExtract}
+            title={
+              !file
+                ? "Please upload a PDF first"
+                : isNameEmpty
+                ? "Please name the PDF statement to unlock extraction"
+                : "Extract statement transactions"
+            }
+            style={{
+              padding: "12px 28px",
+              fontSize: 14,
+              fontWeight: 600,
+              minWidth: 200,
+              boxShadow: canExtract ? "0 4px 15px rgba(139, 92, 246, 0.35)" : "none",
+            }}
+          >
+            {uploading ? (
+              `Processing... ${progress > 0 ? progress + "%" : ""}`
+            ) : !file ? (
+              "Extract Statement"
+            ) : isNameEmpty ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                🔒 Name PDF to Unlock
+              </span>
+            ) : (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                ⚡ Extract Statement
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -165,13 +308,16 @@ export default function UploadPDF() {
             </p>
           )}
 
-          <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <a className="btn" href="/transactions" style={{ textDecoration: "none", display: "inline-block" }}>
               View Transactions →
             </a>
             <a className="btn secondary" href="/" style={{ textDecoration: "none", display: "inline-block" }}>
               Go to Dashboard
             </a>
+            <button className="btn secondary" onClick={handleReset} style={{ display: "inline-block" }}>
+              + Upload Another Statement
+            </button>
           </div>
         </div>
       )}

@@ -4,6 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { getSummary, getTopRecipients, getTrend } from "../api.js";
+import { ActiveStatementContext } from "../context.js";
 
 const BAR_COLORS = [
   "#5f259f", "#7c3aed", "#8b5cf6", "#a78bfa",
@@ -22,6 +23,7 @@ function fmtInr(n) {
 }
 
 export default function Dashboard() {
+  const { activeStatementId } = React.useContext(ActiveStatementContext);
   const [summary, setSummary] = useState(null);
   const [trendData, setTrendData] = useState([]);
   const [granularity, setGranularity] = useState("monthly");
@@ -38,9 +40,11 @@ export default function Dashboard() {
     setLoading(true);
     setError("");
     try {
+      const params = {};
+      if (activeStatementId) params.statement_id = activeStatementId;
       const [s, t] = await Promise.all([
-        getSummary(),
-        getTrend({ granularity }),
+        getSummary(params),
+        getTrend({ ...params, granularity }),
       ]);
       setSummary(s.data);
       setTrendData(t.data);
@@ -53,7 +57,9 @@ export default function Dashboard() {
 
   const loadTop = async () => {
     try {
-      const res = await getTopRecipients({ n: topLimit, txn_type: topType });
+      const params = { n: topLimit, txn_type: topType };
+      if (activeStatementId) params.statement_id = activeStatementId;
+      const res = await getTopRecipients(params);
       setTopData(res.data || []);
     } catch (err) {
       console.error("Failed to load top counterparties", err);
@@ -62,11 +68,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadBase();
-  }, [granularity]);
+  }, [granularity, activeStatementId]);
 
   useEffect(() => {
     loadTop();
-  }, [topLimit, topType]);
+  }, [topLimit, topType, activeStatementId]);
 
   if (loading) return <p className="muted">Loading dashboard...</p>;
   if (error) return <p className="error-text">{error}</p>;

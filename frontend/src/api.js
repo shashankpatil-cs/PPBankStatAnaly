@@ -41,17 +41,19 @@ export const deleteAccount = () => api.delete("/auth/me");
 // ---- Statements ----
 export const getAiStatus = () => api.get("/statements/ai-status");
 
-export const uploadStatement = (file, pdfPassword, useAi = true, onProgress = null) => {
+export const uploadStatement = (file, pdfPassword, useAi = true, onProgress = null, statementName = "") => {
   const form = new FormData();
   form.append("file", file);
   if (pdfPassword) form.append("pdf_password", pdfPassword);
   form.append("use_ai", useAi);
+  if (statementName) form.append("statement_name", statementName);
   return api.post("/statements/upload", form, {
     headers: { "Content-Type": "multipart/form-data" },
     onUploadProgress: onProgress,
   });
 };
 export const listStatements = () => api.get("/statements");
+export const updateStatement = (id, filename) => api.patch(`/statements/${id}`, { filename });
 
 // ---- Dashboard ----
 export const getSummary = (params) => api.get("/dashboard/summary", { params });

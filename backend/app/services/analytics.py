@@ -90,16 +90,20 @@ def compute_summary(df: pd.DataFrame) -> dict:
 def top_recipients(df: pd.DataFrame, n: int = 10, txn_type: str = "DEBIT") -> List[dict]:
     if df.empty:
         return []
-    filtered = df[df["type"] == txn_type]
-    if filtered.empty:
-        return []
-    grouped = (
-        filtered.groupby("counterparty")["amount"]
-        .agg(["sum", "count"])
-        .rename(columns={"sum": "total_amount", "count": "transaction_count"})
-        .sort_values("total_amount", ascending=False)
-        .head(n)
+        
+    tmp = df.copy()
+    if txn_type == "DEBIT":
+        tmp["net_value"] = tmp["amount"].where(tmp["type"] == "DEBIT", -tmp["amount"])
+    else:
+        tmp["net_value"] = tmp["amount"].where(tmp["type"] == "CREDIT", -tmp["amount"])
+        
+    grouped = tmp.groupby("counterparty").agg(
+        total_amount=("net_value", "sum"),
+        transaction_count=("amount", "count")
     )
+    
+    grouped = grouped[grouped["total_amount"] > 0].sort_values("total_amount", ascending=False).head(n)
+    
     return [
         {
             "counterparty": idx,

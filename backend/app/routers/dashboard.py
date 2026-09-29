@@ -10,8 +10,10 @@ from app.services import analytics
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
-async def _user_df(user_id: str, start_date: Optional[date], end_date: Optional[date]):
+async def _user_df(user_id: str, start_date: Optional[date], end_date: Optional[date], statement_id: Optional[str] = None):
     query: dict = {"user_id": user_id}
+    if statement_id:
+        query["statement_id"] = statement_id
     if start_date or end_date:
         d = {}
         if start_date:
@@ -28,8 +30,9 @@ async def summary(
     current_user: dict = Depends(get_current_user),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    statement_id: Optional[str] = None,
 ):
-    df = await _user_df(current_user["_id"], start_date, end_date)
+    df = await _user_df(current_user["_id"], start_date, end_date, statement_id)
     return analytics.compute_summary(df)
 
 
@@ -40,8 +43,9 @@ async def top_recipients(
     txn_type: str = Query("DEBIT", pattern="^(DEBIT|CREDIT)$"),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    statement_id: Optional[str] = None,
 ):
-    df = await _user_df(current_user["_id"], start_date, end_date)
+    df = await _user_df(current_user["_id"], start_date, end_date, statement_id)
     return analytics.top_recipients(df, n, txn_type)
 
 
@@ -51,8 +55,9 @@ async def trend(
     granularity: Literal["daily", "monthly"] = "daily",
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    statement_id: Optional[str] = None,
 ):
-    df = await _user_df(current_user["_id"], start_date, end_date)
+    df = await _user_df(current_user["_id"], start_date, end_date, statement_id)
     return analytics.trend(df, granularity)
 
 
@@ -61,6 +66,7 @@ async def categories(
     current_user: dict = Depends(get_current_user),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    statement_id: Optional[str] = None,
 ):
-    df = await _user_df(current_user["_id"], start_date, end_date)
+    df = await _user_df(current_user["_id"], start_date, end_date, statement_id)
     return analytics.category_breakdown(df)

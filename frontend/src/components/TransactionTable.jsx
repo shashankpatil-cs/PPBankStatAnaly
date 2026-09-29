@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { listTransactions, updateTransaction, listCategories } from "../api.js";
+import { ActiveStatementContext } from "../context.js";
 
 function fmtInr(n) {
   return new Intl.NumberFormat("en-IN", {
@@ -49,6 +50,7 @@ function cleanDescription(desc) {
 }
 
 export default function TransactionTable() {
+  const { activeStatementId } = useContext(ActiveStatementContext);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -90,6 +92,7 @@ export default function TransactionTable() {
   const load = async () => {
     setLoading(true);
     const params = { page, page_size: pageSize };
+    if (activeStatementId) params.statement_id = activeStatementId;
     if (search) params.search = search;
     if (txnType) params.txn_type = txnType;
     if (categoryFilter) params.category = categoryFilter;
@@ -112,7 +115,7 @@ export default function TransactionTable() {
 
   useEffect(() => {
     load();
-  }, [page]);
+  }, [page, activeStatementId]);
 
   const applyFilters = (e) => {
     e.preventDefault();
@@ -128,7 +131,9 @@ export default function TransactionTable() {
     setEndDate("");
     setPage(1);
     setTimeout(() => {
-      listTransactions({ page: 1, page_size: pageSize }).then((res) => {
+      const p = { page: 1, page_size: pageSize };
+      if (activeStatementId) p.statement_id = activeStatementId;
+      listTransactions(p).then((res) => {
         setItems(res.data.items);
         setTotal(res.data.total);
       });
